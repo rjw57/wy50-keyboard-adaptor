@@ -59,6 +59,8 @@ void setup() {
 # include "ps2_mapping.h"
 # undef MAP_ENTRY
 
+  prev_col = 0xff;
+
   // Configure the keyboard library
   keyboard.begin( DATAPIN, IRQPIN );
   keyboard.setLock(PS2_LOCK_CAPS);
@@ -70,7 +72,9 @@ void setup() {
 }
 
 void loop() {
+  static bool kb_avail = false;
   uint8_t col = PIND >> 4;
+
   if(col < 13) {
     uint8_t row = kb_cols[col];
     PORTB = (PORTB & 0b11000000) | (row & 0b00111111);
@@ -80,14 +84,19 @@ void loop() {
     PORTC |= 0b00000011;
   }
 
-  if((col == 7) && keyboard.available()) {
-    uint16_t code = keyboard.read();
-    bool is_break = code & PS2_BREAK;
-    uint8_t key = code & 0xff;
-    uint8_t mapped_key = ps2_codes[key];
+  kb_avail = kb_avail || keyboard.available();
 
-    if(!(mapped_key & 0x8000)) {
-      update_map(mapped_key >> 3, mapped_key & 0b111, is_break);
+  if(col == 0) {
+    if(kb_avail) {
+      kb_avail = false;
+      uint16_t code = keyboard.read();
+      bool is_break = code & PS2_BREAK;
+      uint8_t key = code & 0xff;
+      uint8_t mapped_key = ps2_codes[key];
+
+      if(!(mapped_key & 0x8000)) {
+        update_map(mapped_key >> 3, mapped_key & 0b111, is_break);
+      }
     }
   }
 }
